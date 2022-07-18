@@ -1,0 +1,89 @@
+(ns swarm.core
+  (:require [quil.core :as q]
+            [quil.middleware :as m]))
+
+(import 'javax.swing.JFrame)
+(import 'javax.swing.JPanel)
+(import 'javax.swing.JButton)
+(import 'javax.swing.JComboBox)
+
+(def frame (JFrame. "Swarm controller"))
+(def panel (JPanel.))
+(def buttonStart (JButton. "Start"))
+(def buttonStop (JButton. "Stop"))
+(def ruleCombo (JComboBox. (java.util.Vector. ["Rule1" "Rule2"])))
+(def switch (atom { :flag 0}))
+
+(defn setup []
+  ; Set frame rate to 30 frames per second.
+  (q/frame-rate 30)
+  ; Set color mode to HSB (HSV) instead of default RGB.
+  (q/color-mode :hsb)
+  
+  ;; add gui
+  ;; window
+  (.setBounds frame 200 200 500 100)
+
+  (.setVisible frame true)
+  ;; panel
+  (.add frame panel)
+  (.setContentPane frame panel)
+  ;; buttons
+  (.add panel buttonStart)
+  (.revalidate buttonStart)
+  (.addActionListener
+   buttonStart
+   (reify java.awt.event.ActionListener
+     (actionPerformed [this e]
+       (.setText buttonStart "Start!"))))  
+  (.add panel buttonStop)
+  (.revalidate buttonStop)
+  (.addActionListener
+   buttonStop
+   (reify java.awt.event.ActionListener
+     (actionPerformed [this e]
+       (.setText buttonStop "Stop!")))
+     ; dropdown
+  (.add ruleCombo panel)
+  (.revalidate ruleCombo))
+  
+  ; setup function returns initial state. It contains
+  ; circle color and position.
+  {:color 0
+   :coord (vec (map (fn [y] 
+             (vec (map (fn [x] [(* x 100) (* y 100)])
+                       (vec (range 10))))) (range 10)))})
+
+(defn update-state [state]
+  ; Update sketch state by changing circle color and position.
+  {:color (mod (+ (:color state) 0.7) 255)
+   :coord (:coord state)})
+
+(defn draw-state [state]
+  ; Clear the sketch by filling it with light-grey color.
+  (q/background 240)
+                                        ; Set circle color.
+  (doseq [y (range (count (:coord state)))]
+    (doseq [x (range (count (nth (:coord state) y)))]
+      (q/fill 0 255 255)
+      (q/ellipse (+ 25 (first (nth (nth (:coord state) y) x)))
+                 (+ 25 (last (nth (nth (:coord state) y ) x)))
+                 50 50)))
+
+  (q/fill (:color state) 255 255)
+  (q/ellipse (q/mouse-x) (q/mouse-y) 50 50))
+
+(defn -main [& args]
+  (q/defsketch swarm
+    :title "You spin my circle right round"
+    :size [1000 1000]
+                                        ; setup function called only once, during sketch initialization.
+    :setup setup
+                                        ; update-state is called on each iteration before draw-state.
+    :update update-state
+    :draw draw-state
+    :features [:keep-on-top]
+                                        ; This sketch uses functional-mode middleware.
+                                        ; Check quil wiki for more info about middlewares and particularly
+                                        ; fun-mode.
+    :middleware [m/fun-mode]))
